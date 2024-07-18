@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SODOKU</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+        }
+        #sudoku-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        #sudoku-board {
+            display: grid;
+            grid-template-columns: repeat(9, 40px);
+            grid-template-rows: repeat(9, 40px);
+            gap: 2px;
+            margin: 20px 0;
+        }
+        .sudoku-cell {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+        }
+        .sudoku-cell:nth-child(3n) {
+            border-right: 2px solid black;
+        }
+        .sudoku-cell:nth-child(27n) {
+            border-bottom: 2px solid black;
+        }
+        #controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div id="sudoku-container">
+        <h1>SODOKU</h1>
+        <div id="sudoku-board"></div>
+        <div id="controls">
+            <button id="generate-sudoku">Generar Sudoku</button>
+            <button id="export-pdf">Exportar a PDF</button>
+        </div>
+        <p>Generado por John Charcos</p>
+    </div>
+
+    <script>
+        let solutionBoard;
+
+        function generateSudoku() {
+            const board = Array(9).fill().map(() => Array(9).fill(0));
+            solutionBoard = Array(9).fill().map(() => Array(9).fill(0));
+            solveSudoku(board);
+            
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    solutionBoard[i][j] = board[i][j];
+                    if (Math.random() > 0.3) {
+                        board[i][j] = 0;
+                    }
+                }
+            }
+            
+            return board;
+        }
+
+        function solveSudoku(board) {
+            const emptyCell = findEmptyCell(board);
+            if (!emptyCell) return true;
+            
+            const [row, col] = emptyCell;
+            for (let num = 1; num <= 9; num++) {
+                if (isValid(board, row, col, num)) {
+                    board[row][col] = num;
+                    if (solveSudoku(board)) {
+                        return true;
+                    }
+                    board[row][col] = 0;
+                }
+            }
+            return false;
+        }
+
+        function findEmptyCell(board) {
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    if (board[i][j] === 0) return [i, j];
+                }
+            }
+            return null;
+        }
+
+        function isValid(board, row, col, num) {
+            for (let x = 0; x < 9; x++) {
+                if (board[row][x] === num || board[x][col] === num) {
+                    return false;
+                }
+            }
+            
+            const startRow = Math.floor(row / 3) * 3;
+            const startCol = Math.floor(col / 3) * 3;
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (board[i + startRow][j + startCol] === num) {
+                        return false;
+                    }
+                }
+            }
+            
+            return true;
+        }
+
+        function renderSudoku(board) {
+            const sudokuBoard = document.getElementById('sudoku-board');
+            sudokuBoard.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('sudoku-cell');
+                    cell.textContent = board[i][j] || '';
+                    sudokuBoard.appendChild(cell);
+                }
+            }
+        }
+
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.setFontSize(20);
+            doc.text("SODOKU", 105, 15, null, null, "center");
+            
+            const board = document.getElementById('sudoku-board');
+            const cells = board.getElementsByClassName('sudoku-cell');
+            
+            doc.setLineWidth(0.1);
+            for (let i = 0; i <= 9; i++) {
+                doc.line(20, 30 + i * 20, 200, 30 + i * 20);
+                doc.line(20 + i * 20, 30, 20 + i * 20, 210);
+            }
+            
+            doc.setLineWidth(0.5);
+            for (let i = 0; i <= 3; i++) {
+                doc.line(20, 30 + i * 60, 200, 30 + i * 60);
+                doc.line(20 + i * 60, 30, 20 + i * 60, 210);
+            }
+            
+            doc.setFontSize(12);
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    const cellValue = cells[i * 9 + j].textContent;
+                    if (cellValue) {
+                        doc.text(cellValue, 25 + j * 20, 35 + i * 20);
+                    }
+                }
+            }
+            
+            doc.setLineWidth(0.1);
+            doc.setFontSize(6);
+            for (let i = 0; i <= 9; i++) {
+                doc.line(20, 220 + i * 6, 74, 220 + i * 6);
+                doc.line(20 + i * 6, 220, 20 + i * 6, 274);
+            }
+            
+            doc.setLineWidth(0.3);
+            for (let i = 0; i <= 3; i++) {
+                doc.line(20, 220 + i * 18, 74, 220 + i * 18);
+                doc.line(20 + i * 18, 220, 20 + i * 18, 274);
+            }
+            
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    const cellValue = solutionBoard[i][j].toString();
+                    doc.text(cellValue, 22 + j * 6, 224 + i * 6);
+                }
+            }
+            
+            doc.setFontSize(10);
+            doc.text("Generado por John Charcos", 105, 290, null, null, "center");
+            
+            doc.save("sudoku.pdf");
+        }
+
+        document.getElementById('generate-sudoku').addEventListener('click', () => {
+            const board = generateSudoku();
+            renderSudoku(board);
+        });
+
+        document.getElementById('export-pdf').addEventListener('click', exportToPDF);
+
+        const initialBoard = generateSudoku();
+        renderSudoku(initialBoard);
+    </script>
+</body>
+</html>
